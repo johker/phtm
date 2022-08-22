@@ -1,0 +1,51 @@
+# Definition of message ids for DHTM
+
+---
+
+# Header layout:
+
+ID_OFFSET:         0          # Offset Message ID
+TYPE_OFFSET:       2          # Offset Message Type
+CMD_OFFSET:        4          # Offset Message Command
+KEY_OFFSET:        6          # Offset Message Key
+PAYLOAD_OFFSET:    8          # Offset Payload
+MSG_KEY_DIV:    1000          # Below: parameter payload, above: sdr payload
+DEF_PL_SIZE:     512          # Dedault payload size 
+
+# Message IDs
+
+MessageType:
+
+ - UNDEFINED:       0         # None
+ - CONFIGURATION:   1         # Parameter updates
+ - DATA:            2         # Data updates
+ - NETWORK:         3         # Network management
+
+MessageCommand:
+
+ - RESERVED:         0        # None
+ - READ:             1        # Read a parameter
+ - WRITE:            2        # Write a parameter
+ - PRINT:            3        # Print SDR
+ - ACK:              4        # Acknowledge
+ - INPUT:            5        # Input Data
+ - REPLICATE:        6        # Replicate Node
+
+MessageKey:
+ - UNDEFINED:        0
+                              # Configuration:
+ - C_ACTBTS:         1        # Active Bits
+ - C_RAWDAT:         2        # Raw Data to be encoded
+ - C_SDRLEN:         3        # SDR Length
+
+                              # Data:
+ - D_INPUT:          1001     # Input Layer
+ - D_SPOOL:          1002     # Spatial Pooler
+   
+
+NodeType:
+
+ - UNDEFINED:        0        # Not defined
+ - SCALAR_ENCODER:   1        # Scalar Encoder
+ - SPATIAL_POOLER:   2        # Spatial Pooler
+
