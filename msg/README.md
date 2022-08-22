@@ -1,4 +1,4 @@
-## DHTM Message format specification
+## Message format specification
 
 Each message is encoded in binary format. Its components are:
 
