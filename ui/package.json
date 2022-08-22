@@ -1,0 +1,17 @@
+{
+  "name": "dhtm_ui",
+  "version": "1.0.0",
+  "description": "visualization for dhtm",
+  "main": "dist/app.js",
+  "scripts": {
+    "start": "tsc && node build/app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "johker",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.1",
+    "socket.io": "^3.1.0",
+    "zeromq": "^5.2.0"
+  }
+}

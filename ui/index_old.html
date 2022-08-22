@@ -1,0 +1,105 @@
+<html>
+<head>
+<style>
+/* HTML styles */
+html{ width: 100%; }
+body{ 
+  width: 100%; 
+  margin: 0; padding: 0; 
+  display: flex; 
+  font-family: sans-serif; font-size: 75%; }
+.controls {
+  flex-basis: 200px;
+  padding: 0 5px;
+}
+.controls .force {
+  background-color:#eee;
+  border-radius: 3px;
+  padding: 5px;
+  margin: 5px 0;
+}
+.controls .force p label { margin-right: .5em; font-size: 120%; font-weight: bold;}
+.controls .force p { margin-top: 0;}
+.controls .force label { display: inline-block; }
+.controls input[type="checkbox"] { transform: scale(1.2, 1.2); }
+.controls input[type="range"] { margin: 0 5% 0.5em 5%; width: 90%; }
+/* alpha viewer */
+.controls .alpha p { margin-bottom: .25em; }
+.controls .alpha .alpha_bar { height: .5em; border: 1px #777 solid; border-radius: 2px; padding: 1px; display: flex; }
+.controls .alpha .alpha_bar #alpha_value { background-color: #555; border-radius: 1px; flex-basis: 100% }
+.controls .alpha .alpha_bar:hover { border-width: 2px; margin:-1px; }
+.controls .alpha .alpha_bar:active #alpha_value { background-color: #222 }
+.minicolumn {
+	fill: #555;
+}
+.container {
+	width: 250px;
+	height: 200px;
+	border: 1px solid #555;
+}
+
+
+/* SVG styles */
+svg {
+  flex-basis: 100%;
+  min-width: 200px;
+}
+.links line {
+  stroke: #aaa;
+}
+.nodes circle {
+  pointer-events: all;
+}
+
+</style>
+</head>
+<body>
+<div class="controls">
+  <div class="force alpha">
+    <p><label>HTM</label> Hierarchical Temporal Memory</p>
+  </div>
+
+  <div class="force">
+    <p><label>Scalar Encoder</label> Encodes a numeric (floating point) value into an array
+     of bits.</p>
+    <label title="Scalar value to encode.">
+      value = 
+      <output id="id_rawdat">100</output>
+      <input type="range" min="0" max="100" value="50" step="1" oninput="d3.select('#id_rawdat').text(value);  sendConfig('MessageKey.D_RAWDAT', value);">
+    </label>
+     <form id="form" action="">
+    	<input id="input" autocomplete="off" /><button>Send</button>
+    </form>
+  </div>
+</div>
+<div id="grid"></div>
+<script src="https://d3js.org/d3.v5.min.js"></script>
+<script src="https://d3js.org/d3-scale.v3.min.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="./public/code.js"></script>
+<script src="./public/msg.js"></script>
+    <script>
+      var socket = io();
+
+      //var messages = document.getElementById('messages');
+      var form = document.getElementById('form');
+      var input = document.getElementById('input');
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        if (input.value) {
+          socket.emit('cmd', input.value);
+          input.value = '';
+        }
+      });
+
+      socket.on('cmd', function(msg) {
+	console.log(msg);
+        //var item = document.createElement('li');
+        //item.textContent = msg;
+        //messages.appendChild(item);
+        //window.scrollTo(0, document.body.scrollHeight);
+      });
+    </script>
+</body>
+</html>
