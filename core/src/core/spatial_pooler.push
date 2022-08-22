@@ -1,0 +1,516 @@
+
+# Push implementation of spatial pooler
+# 
+
+# ---------------- Spatial Pooler Start -------------------
+(
+
+BP0 NAME.POP
+
+# -------------------------------------------------------------------------
+#                            Subroutines                                  #
+# -------------------------------------------------------------------------
+
+# NEIGHBORS
+# PARAMS:
+# 1. column_id (INTEGER)
+# 2. distance/radius (INTEGER)
+# 3. visited_nodes (INTVECTOR)
+# 4. state_filter (INTVECTOR)
+# RETURNS:
+# 1. distance (INTEGER)
+# 2. visited_nodes (INTVECTOR)
+# 3. state_filter (INTVECTOR)
+COLUMN_NEIGHBORHOOD EXEC.DEFINE
+(
+	# Add column to visited_nodes
+	INTEGER.DUP INTVECTOR.SET*INSERT 
+	
+	# Remaining distance > 0?
+	1 INTEGER.YANKDUP 0 INTEGER.> EXEC.IF 
+	(
+		1 INTVECTOR.YANKDUP GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+		(
+			# Reduce distance
+			INTEGER.SWAP 1 INTEGER.- INTEGER.SWAP 
+
+			COLUMN_NEIGHBORHOOD 
+
+			# Increase distance
+			1 INTEGER.+
+		)
+	) INTEGER.POP # Pop column_id
+)
+
+# COLUMN OVERLAP
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. column_id (INTEGER)
+#
+COLUMN_OVERLAP EXEC.DEFINE
+(
+	# Get Boost cell ID 
+	INTEGER.DUP STATE_BOOST_CELL 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS 0 INTVECTOR.GET INTVECTOR.POP
+	# Boost = Origin = 2nd stack element 
+	# Column = Destination = 1st stack element
+	INTEGER.SWAP
+	# Get overlap (= weight of BOOST->COLUMN edge)
+	GRAPH.EDGE*GETWEIGHT
+
+)
+
+# UPDATE_COLUMN OVERLAP
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. column_id (INTEGER)
+#
+UPDATE_COLUMN_OVERLAP EXEC.DEFINE
+(
+	# Get Boost cell
+	INTEGER.DUP STATE_BOOST_CELL 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+	(
+		# Count input with state STATE_INPUT_ON  (= Overlap)
+		INTEGER.DUP STATE_INPUT_ON 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS INTVECTOR.LENGTH INTVECTOR.POP FLOAT.FROMINTEGER
+
+		# Multiply Boost Factor (= eight of COLUMN->BOOST edge)
+		INTEGER.DDUP GRAPH.EDGE*GETWEIGHT FLOAT.*
+
+		# Update overlap (= weight of BOOST->COLUMN edge)
+		INTEGER.SWAP GRAPH.EDGE*SETWEIGHT
+	)
+	
+)
+
+
+BP1 NAME.POP
+
+# -------------------------------------------------------------------------
+# Phase 1 – Initialize Spatial Pooling algorithm parameters               #
+# -------------------------------------------------------------------------
+
+
+# Calculate number of potential inputs per column (round to next integer)
+NUM_INPUTS FLOAT.FROMINTEGER POTENTIAL_PCT FLOAT.* INTEGER.FROMFLOAT
+1 INTEGER.+ NUM_POTENTIAL_INPUTS INTEGER.DEFINE
+
+# Generate input bias vector for permanences: Sine Wave covering an angle 
+# of 4*PI with length 2 * NUM_POTENTIAL_INPUTS. The bias vector is then 
+# added to the permanences of each column with a shift of 
+# (2*PI/NUM_POTENTIAL_INPUTS) * COLUMN_NUMBER
+( NUM_POTENTIAL_INPUTS 2 INTEGER.* ) 0.0 ( 1.0 NUM_POTENTIAL_INPUTS FLOAT.FROMINTEGER FLOAT./ )
+PERM_BIAS_AMPLITUDE FLOATVECTOR.SINE BIAS_VECTOR FLOATVECTOR.DEFINE
+
+# Define input and colunm id vectors
+INTVECTOR.EMPTY NAME.QUOTE INPUT_IDS INTVECTOR.DEFINE
+INTVECTOR.EMPTY NAME.QUOTE COLUMN_IDS INTVECTOR.DEFINE
+
+BP2 NAME.POP
+
+
+# -------------------------------------------------------------------------
+# Graph Initialization – Add a new graph for the spatial pooler           #
+# -------------------------------------------------------------------------
+
+GRAPH.ADD
+
+# Add inputs
+NUM_INPUTS INDEX.DEFINE EXEC.LOOP
+(
+	STATE_INPUT_OFF GRAPH.NODE*ADD
+
+	INPUT_IDS INTVECTOR.SET*INSERT NAME.QUOTE INPUT_IDS INTVECTOR.DEFINE
+)
+
+# Add columns
+NUM_COLUMNS INDEX.DEFINE EXEC.LOOP
+(
+	# Add column node
+	STATE_COLUMN_INACTIVE GRAPH.NODE*ADD
+
+	# Add activity duty cycle
+	INTEGER.DUP INTEGER.DUP 0.0 GRAPH.EDGE*ADD
+
+	# Update column ids
+	INTEGER.DUP COLUMN_IDS INTVECTOR.SET*INSERT NAME.QUOTE COLUMN_IDS INTVECTOR.DEFINE
+
+	# Potential Pool: Visible indices of input vector
+	NUM_INPUTS POTENTIAL_PCT BOOLVECTOR.RAND 
+	
+	# Synaptic Permanences: Randomly distributed around the connection threshold
+	NUM_POTENTIAL_INPUTS PERM_STD_DEV PERM_CON_THRESHOLD FLOATVECTOR.RAND 
+	# Generate bias towards a random center
+	# Add by a sine filter shifted by one for each column (using loop counter)
+	INDEX.CURRENT BIAS_VECTOR FLOATVECTOR.+ 
+
+	# Add Boost cell
+	STATE_BOOST_CELL GRAPH.NODE*ADD
+
+	# Copy boost id for later
+	INTEGER.DUP 2 INTEGER.SHOVE
+
+	# COLUMN -> BOOST CELL (BOOST FACTOR)
+	INTEGER.DDUP 1.0 GRAPH.EDGE*ADD
+
+	# BOOST CELL -> COLUMN (OVERLAP)
+	INTEGER.SWAP 0.0 GRAPH.EDGE*ADD
+
+	#Index 
+	0
+
+	INPUT_IDS INTVECTOR.LOOP 
+	(
+		# Get bool flag at index position
+		1 INTEGER.YANKDUP BOOLVECTOR.GET EXEC.IF
+		(
+			# Add edge from column to input
+			# Edge Weight = Synaptic Permanence
+			1 INTEGER.YANKDUP FLOATVECTOR.GET
+			# INPUT -> BOOST CELL
+			2 INTEGER.YANKDUP GRAPH.EDGE*ADD 	
+		) INTEGER.POP
+
+		# Increase index
+		1 INTEGER.+
+	)
+	
+	#Remove index
+	INTEGER.POP
+
+	# Remove random boolvector
+	BOOLVECTOR.POP
+
+	# Remove Synaptic Permanence Vector
+	FLOATVECTOR.POP
+
+	#Remove columns id
+	INTEGER.POP 
+
+	# Sort input id vector to ensure reproducable mapping of inputs stack to graph 
+	INTVECTOR.SORT*ASC NAME.QUOTE COLUMN_IDS INTVECTOR.DEFINE
+	
+)
+
+BP3 NAME.POP
+
+# -------------------------------------------------------------------------
+#                          Column Topology                                #
+# -------------------------------------------------------------------------
+# Generate a 2D lattice of the N column cells with n columns and m rows:
+# Create bidirectional edges to speed up later processing. Allow only 
+# quadratic number of columns (for simplicity).
+
+# Push column ids
+COLUMN_IDS
+
+# for i=0..N-2
+NUM_COLUMNS 1 INTEGER.- INDEX.DEFINE EXEC.LOOP
+(
+	# 1. "Horizontal" edges
+	# if (i+1)%n != 0:
+	INDEX.CURRENT 1 INTEGER.+ TOPOLOGY_EDGE_LENGTH INTEGER.% 0 INTEGER.= BOOLEAN.NOT EXEC.IF (
+		# +E[i->(i+1)]
+		INDEX.CURRENT INTVECTOR.GET
+		INDEX.CURRENT 1 INTEGER.+ INTVECTOR.GET
+		TOPOLOGY_WEIGHT GRAPH.EDGE*ADD
+		# +E[(i+1)->i]  - reverse direction
+		INDEX.CURRENT 1 INTEGER.+ INTVECTOR.GET
+		INDEX.CURRENT INTVECTOR.GET
+		TOPOLOGY_WEIGHT GRAPH.EDGE*ADD
+	) NOOP
+
+	# 2. "Vertial" edges
+	# if (i+n)<N:
+	INDEX.CURRENT TOPOLOGY_EDGE_LENGTH INTEGER.+ NUM_COLUMNS INTEGER.< EXEC.IF
+	(
+		# +E[i->(i+n)]
+		INDEX.CURRENT INTVECTOR.GET
+		INDEX.CURRENT TOPOLOGY_EDGE_LENGTH INTEGER.+ INTVECTOR.GET
+		TOPOLOGY_WEIGHT GRAPH.EDGE*ADD
+		# +E[(i+n)->i] - reverse direction
+		INDEX.CURRENT TOPOLOGY_EDGE_LENGTH INTEGER.+ INTVECTOR.GET
+		INDEX.CURRENT INTVECTOR.GET
+		TOPOLOGY_WEIGHT GRAPH.EDGE*ADD
+	) NOOP
+)
+
+INTVECTOR.POP
+
+BP4 NAME.POP
+
+# -------------------------------------------------------------------------
+# Phase 2 – Compute the overlap with the current input for each column    #
+# -------------------------------------------------------------------------
+
+
+# Read input repeatedly
+EXEC.Y
+(
+	# Pushes true if there is input / false otherwise
+	INPUT.AVAILABLE
+	
+	# Move next input reading to the bottom of the stack
+	EXEC.STACKDEPTH EXEC.SHOVE
+)
+
+BP5 NAME.POP
+
+# Repeat P2
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+		# Increase global counter
+		ITERATION_COUNTER 1 INTEGER.+
+		NAME.QUOTE ITERATION_COUNTER INTEGER.DEFINE
+
+		# Copy input
+		INPUT.READ INTVECTOR.POP
+
+		# Transfer input to graph
+		INPUT_IDS STATE_INPUT_ON STATE_INPUT_OFF GRAPH.NODE*STATESWITCH 
+
+		# Write input changes
+		GRAPH.UPDATE
+
+		# Loop through columns
+		COLUMN_IDS INTVECTOR.LOOP
+		(
+			UPDATE_COLUMN_OVERLAP	
+		)
+
+	)
+)
+
+GRAPH.UPDATE
+
+BP6 NAME.POP
+
+# -------------------------------------------------------------------------
+# Phase 3 – Compute the winning columns after inhibition
+# -------------------------------------------------------------------------
+
+# Repeat P3
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+		# Consider column neighbors only
+		STATE_COLUMN_INACTIVE STATE_COLUMN_ACTIVE 2 INTVECTOR.FROMINT 
+
+		# Loop columns
+		COLUMN_IDS INTVECTOR.LOOP 
+		(
+			# Skip if nunber of required active columns are higher than total number of columns
+			NUM_COLUMNS NUM_ACT_COL_PER_INH_AREA INTEGER.> EXEC.IF
+			(
+				# Calculate MIN_LOCAL_ACTIVITY for this column
+				# Initialize overlap vector
+				FLOATVECTOR.EMPTY
+				
+				
+				# Loop neighbor IDs
+				INTVECTOR.EMPTY INTEGER.DUP INHIBITION_RADIUS INTEGER.SWAP COLUMN_NEIGHBORHOOD INTEGER.POP INTVECTOR.LOOP
+				(
+					# Get overlap
+					COLUMN_OVERLAP FLOATVECTOR.APPEND
+
+				)
+
+				# MIN_LOCAL_ACTIVITY is the kth element
+				# k = NUM_ACT_COL_PER_INH_AREA
+				FLOATVECTOR.SORT*ASC NUM_ACT_COL_PER_INH_AREA FLOATVECTOR.GET
+				# Simulate >= (subtract epsilon) 
+				0.01 FLOAT.- 
+				# Cleanup
+				FLOATVECTOR.POP
+
+			) 0.0
+
+			# Check if column overlap is above threshold
+			INTEGER.DUP COLUMN_OVERLAP FLOAT.DUP 2 FLOAT.YANK FLOAT.> STIMULUS_THRESHOLD FLOAT.> BOOLEAN.AND EXEC.IF 
+			(	
+				# Activate column
+				STATE_COLUMN_ACTIVE GRAPH.NODE*SETSTATE
+			)
+			(
+				# Deactivate column 
+				STATE_COLUMN_INACTIVE GRAPH.NODE*SETSTATE
+			)
+		)
+		INTVECTOR.POP
+	)
+)
+ 
+GRAPH.UPDATE
+
+BP7 NAME.POP
+
+# -------------------------------------------------------------------------
+# Phase 4 – Update synapse permanences and internal variables
+# -------------------------------------------------------------------------
+
+# Repeat P4
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+		# Loop columns
+		COLUMN_IDS INTVECTOR.LOOP 
+		(
+
+			INTEGER.DUP GRAPH.NODE*GETSTATE STATE_COLUMN_ACTIVE INTEGER.= EXEC.IF
+			(
+				# Get Boost cell ID
+				INTEGER.DUP STATE_BOOST_CELL 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS 0 INTVECTOR.GET INTVECTOR.POP
+
+				# Get Input cells
+				INTEGER.DUP STATE_INPUT_ON STATE_INPUT_OFF 2 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP (
+					# Increase permanence if input is active
+					INTEGER.DUP GRAPH.NODE*GETSTATE STATE_INPUT_ON INTEGER.= EXEC.IF 
+					(
+						# Get edge weight (INPUT -> BOOST) 
+						1 INTEGER.YANKDUP INTEGER.DDUP GRAPH.EDGE*GETWEIGHT 
+						# Adjust edge weight
+						PERM_INCREMENT FLOAT.+ 1.0 FLOAT.MIN
+						# Set edge weight
+						GRAPH.EDGE*SETWEIGHT 
+					) 
+					(
+					# Decrease permanence if input is inactive
+						# Get edge weight (INPUT -> BOOST) 
+						1 INTEGER.YANKDUP INTEGER.DDUP GRAPH.EDGE*GETWEIGHT 
+						# Adjust edge weight
+						PERM_DECREMENT FLOAT.- 0.0 FLOAT.MAX
+						# Set edge weight
+						GRAPH.EDGE*SETWEIGHT 
+					)
+				) INTEGER.POP # Remove dup input cell
+			) INTEGER.POP # Remove dup column id if not active
+			INTEGER.POP # Remove column id
+		) 
+
+		BP8 NAME.POP
+
+		# Loop columns
+
+		# Add state filter
+		STATE_COLUMN_ACTIVE STATE_COLUMN_INACTIVE 2 INTVECTOR.FROMINT
+
+		PRINT
+
+		# First run: update duty cycles
+		COLUMN_IDS INTVECTOR.LOOP 
+		(
+
+			# Calculate Active Duty Cycle for current column
+
+			# Get activity duty cycle of neighbor state at stack position1 (previous iteration)
+			INTEGER.DUP INTEGER.DUP 1 GRAPH.EDGE*HISTORY 
+
+			# Apply weight
+			WIN_LENGTH 1 INTEGER.- FLOAT.FROMINTEGER FLOAT.*
+
+			# Add current activity 
+			INTEGER.DUP INTEGER.DUP GRAPH.EDGE*GETWEIGHT FLOAT.+
+
+			# Divide by window length
+			WIN_LENGTH FLOAT.FROMINTEGER FLOAT./
+
+			# Set updated duty cycle current activity
+			INTEGER.DUP INTEGER.DUP GRAPH.EDGE*SETWEIGHT
+
+			PRINTGRAPH
+
+			# Remove column
+			INTEGER.POP
+		
+		)
+
+		BP9 NAME.POP
+
+		COLUMN_IDS INTVECTOR.LOOP 
+		(
+			# Calculate mean activity duty cycle for neighbors
+			# Get Neighbors
+
+			INTVECTOR.EMPTY INTEGER.DUP INHIBITION_RADIUS INTEGER.SWAP PRINT COLUMN_NEIGHBORHOOD PRINT INTEGER.POP 
+
+			# Remove center column from neighbor ids
+			INTEGER.DUP INTVECTOR.REMOVE
+
+			# Initialize Duty Cycle vector for neighbors
+			INTVECTOR.LENGTH FLOATVECTOR.ZEROS
+
+			# Loop column neighbor ids
+			INTVECTOR.LENGTH INDEX.DEFINE EXEC.LOOP
+			(
+				# Get Neighbor ID
+				INDEX.CURRENT INTVECTOR.GET
+
+				# Get updated current activity 
+				INTEGER.DUP INTEGER.DUP GRAPH.EDGE*GETWEIGHT 
+
+				# Save activity
+				INDEX.CURRENT FLOATVECTOR.SET 
+
+				# Clear neighbor id
+				INTEGER.POP
+				)
+			)
+			FLOATVECTOR.MEAN 
+			INTVECTOR.POP
+
+			# Boost function
+			FLOAT.- 
+			# Multiply by -BOOSTING_STRENGTH
+			BOOSTING_STRENGTH FLOAT.* -1.0 FLOAT.*
+			# Exponential function
+			FLOAT.EXP
+			# Get Boost Cell ID
+			INTEGER.DUP STATE_BOOST_CELL 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS 0 INTVECTOR.GET
+			# Set Boost Factor
+			GRAPH.EDGE.SETWEIGHT
+
+			# Check overlap duty cycle
+			GRAPH.STACKDEPTH INDEX.DEFINE EXEC.LOOP
+			(
+				# Copy Column ID
+				INTEGER.DUP
+				# Get overlap at stack position
+				# Get Boost Cell ID
+				INTEGER.DUP STATE_BOOST_CELL 1 INTVECTOR.FROMINT GRAPH.NODE*PREDECESSORS 0 INTVECTOR.GET
+				INDEX.CURRENT GRAPH.NODE*GETSTATE 
+				STATE_COLUMN_ACTIVE INTEGER.= EXEC.IF 
+				(
+					1.0 FLOAT.+
+				) NOOP
+			)
+
+
+		) # End of columns loop
+
+		PRINT
+		BP10 NAME.POP
+
+	)
+)
+
+
+# -------------------------------------------------------------------------
+# Phase 5 – Push messages to ouput buffer
+# -------------------------------------------------------------------------
+
+# Repeat P4
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+		
+		GRAPH.PRINT*DIFF NAME.SEND
+	)
+
+)

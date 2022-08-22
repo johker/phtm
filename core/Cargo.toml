@@ -1,0 +1,26 @@
+[package]
+name = "phtm"
+description = "Push Hierarchical Temporal Memory"
+version = "0.1.0"
+authors = ["johker <johannes.kern@zoho.com>"]
+edition = "2018"
+
+[[bin]]
+name = "phtm_node"
+path = "src/main.rs"
+
+[lib]
+name = "phtm"
+path = "src/lib.rs"
+
+
+[dependencies]
+rand = "0.8"
+zmq = "0.9.2"
+pushr = { path = "../../pushr", version = "0.4.0" }
+time = "0.2.25"
+enum-primitive-derive = "0.2.1"
+num-traits = "0.2.14"
+syn = "1.0.69"
+quote = "1.0.9"
+

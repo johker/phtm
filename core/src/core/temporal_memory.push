@@ -1,0 +1,643 @@
+# -------------------------------------------------------------------------
+#                              Temporal Memory                            #
+# -------------------------------------------------------------------------
+(
+
+
+# -------------------------------------------------------------------------
+#                              Subroutines                                #
+# -------------------------------------------------------------------------
+
+# NUMBER ACTIVE POTENTIAL SYNAPSES
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. segment_id (INTEGER)
+#
+NUM_ACTIVE_POTENTIAL_SYNAPSES EXEC.DEFINE
+(
+	NAME.QUOTE NUM_ACTIVE_POTENTIAL 0 INTEGER.DEFINE
+
+	# Iterate pre-synaptic cells of segment
+	INTEGER.DUP ( STATE_CELL_ACTIVE 1 INTVECTOR.FROMINT ) GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+	(
+		# Should be 1: segment_id 2: cell_id 3: segment_id
+		1 INTEGER.YANKDUP
+
+		# Increase NUM_ACTIVE_POTENTIAL if synaptic permanence is greater 0
+		GRAPH.EDGE*GETWEIGHT 0.0 FLOAT.> EXEC.IF 
+		(
+			NUM_ACTIVE_POTENTIAL 1 INTEGER.+ NAME.QUOTE NUM_ACTIVE_POTENTIAL INTEGER.DEFINE
+		) NOOP
+		
+	)
+	NUM_ACTIVE_POTENTIAL
+)
+
+
+
+
+# GROW SYNPAPSES
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. new_synapse_count (INTEGER)
+# 2. segment_id (INTEGER)
+# 3. synaptic_growth_candidates (INTVECTOR)
+#
+GROW_SYNAPSES EXEC.DEFINE
+(
+	# Execute if number of new synapses is positive
+	INTEGER.DUP 0 INTEGER.> EXEC.IF
+	(
+		# Candidates for synaptic growth available?
+		INTVECTOR.LENGTH 0 INTEGER.> EXEC.IF
+		(
+			# Choose ranoom winner ID
+			INTEGER.RAND INTEGER.ABS INTVECTOR.LENGTH INTEGER.% INTVECTOR.GET 
+
+			# Remove ID from candidates 
+			INTEGER.DUP INTVECTOR.REMOVE 
+
+			# Check if ID is connected (outgoing edges)
+			INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*SUCCESSORS
+
+			INTVECTOR.LENGTH INTVECTOR.POP 0 INTEGER.= EXEC.IF
+			(
+				# 1.new_synapse_count 2.selected_winner_id 3.segement_id
+				INTEGER.SWAP
+
+				# Copy segement_id
+				2 INTEGER.YANKDUP 2 INTEGER.SHOVE
+
+				# Reduce new snyapse count
+				1 INTEGER.- 2 INTEGER.SHOVE
+
+				# Create new Synapse from selected_winner_id to segment_id
+				INTEGER.SWAP INITIAL_PERMANENCE GRAPH.EDGE*ADD 
+
+			) NOOP 
+
+			GROW_SYNAPSES
+		) NOOP
+
+	) INTEGER.POP INTEGER.POP INTVECTOR.POP
+)
+
+
+#
+# ADJUST PERMANENCES
+# -----------------------------------------------------------------------
+# PARAMS:
+#  segment_id (INTEGER)
+# 
+ADJUST_PERMANENCES EXEC.DEFINE 
+(
+	# Iterate pre-synaptic cells of segment
+	INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+	(
+		INTEGER.DUP 1 GRAPH.NODE*HISTORY STATE_CELL_ACTIVE INTEGER.= EXEC.IF
+		(
+			# Increase synapse permanence
+			# segment ID to top
+			INTEGER.SWAP
+			# Get edge weight pre_syn_cell ID -> segment ID
+			INTEGER.DDUP GRAPH.EDGE*GETWEIGHT
+			# Adjust edge weight
+			PERM_INCREMENT FLOAT.+
+			# Set edge weight
+			GRAPH.EDGE*SETWEIGHT
+		) 
+		(
+			# Decrease synapse permanence
+			# segment ID to top
+			INTEGER.SWAP
+			# Get edge weight
+			INTEGER.DDUP GRAPH.EDGE*GETWEIGHT
+			# Adjust edge weight
+			PERM_DECREMENT FLOAT.-
+			# Set edge weight
+			GRAPH.EDGE*SETWEIGHT
+		)
+	)
+)
+
+#
+# ACTIVATE PREDICTED COLUMN
+# -----------------------------------------------------------------------
+# PARAMS:
+#  cell_ids (INTVECTOR)
+# 
+ACTIVATE_PREDICTED_COLUMN EXEC.DEFINE
+(
+	# Iterate cells for this column
+	INTVECTOR.LOOP
+	(
+		# Iterate segments of cell
+		INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+		(
+			# If segement was active in previous iteration add to winner cells
+			INTEGER.DUP 1 GRAPH.NODE*HISTORY STATE_SEGMENT_ACTIVE BOOLEAN.= 
+			INTEGER.DUP 1 GRAPH.NODE*HISTORY STATE_SEGMENT_ACTIVE_MATCHING.= BOOLEAN.OR
+			EXEC.IF
+			(
+				INTVECTOR.EMPTY GRAPH.NODE*SUCCESSORS 0 INTVECTOR.GET INTVECTOR.POP STATE_CELL_ACTIVE_WINNER GRAPH.NODE.SETSTATE  
+			) INTEGER.POP
+
+			# Copy segment ID
+			INTEGER.DUP
+
+			LEARNING_ENABLED EXEC.IF
+			(
+				# Enforce synapses with correct predictions
+				ADJUST_PERMANENCES
+
+				# Determine missing synapses for this segment
+				SYNAPSE_SAMPLE_SIZE INTVECTOR.LENGTH INTEGER.- 
+				# Synaptic growth candidates (winner cells last round) 
+ 				STATE_CELL_WINNER STATE_CELL_ACTIVE_WINNER 2 INTVECTOR.FROMINT GRAPH.NODES
+
+				GROW_SYNAPSES
+			) NOOP
+
+			# Remove pre_syn_cell ID
+			INTEGER.POP
+		)
+	)
+)
+
+
+#
+# FIND LEAST USED
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. column_cell_ids (INTVECTOR)
+#
+#
+FIND_LEAST_USED_CELLS EXEC.DEFINE
+(
+	# Reset minimum
+	10000 NAME.QUOTE FEWEST_SEGMENTS INTEGER.DEFINE
+
+	# Copy for second loop
+	INTVECTOR.DUP 
+
+	# Find the minimum number of segments per cell for this column
+	INTVECTOR.LOOP
+	(
+		# Get segement count for this cell
+		INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LENGTH
+
+		INTEGER.DUP FEWEST_SEGMENTS INTEGER.< EXEC.IF
+		(
+			# Set number of segement as new minimum 
+			NAME.QUOTE FEWEST_SEGMENTS INTEGER.DEFINE
+			
+		) INTEGER.POP # Clean up
+
+		INTVECTOR.POP # Clean up
+	)
+
+	# Reset cell pool
+	INTVECTOR.EMPTY NAME.QUOTE LEAST_USED_CELLS INTVECTOR.DEFINE
+	
+	# Find all cells that have the minimum number of segments 
+	INTVECTOR.LOOP
+	(
+		# Get segement count for this cell
+		INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LENGTH INTVECTOR.POP
+
+		FEWEST_SEGMENTS INTEGER.= EXEC.IF
+		(
+			# Add cell ID to pool of least used cells
+			LEAST_USED_CELLS INTVECTOR.SET*INSERT NAME.QUOTE LEAST_USED_CELLS INTVECTOR.DEFINE
+
+		) INTEGER.POP INTVECTOR.POP # Clean up
+	)
+	LEAST_USED_CELLS 
+)
+
+#
+# BURST COLUMN
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. column_cell_ids (INTVECTOR)
+#
+BURST_COLUMN EXEC.DEFINE
+(
+	# Matching flag
+	FALSE 
+
+	INTVECTOR.DUP
+
+	# Iterate cells of this column
+	INTVECTOR.LOOP	
+	(
+		# Mark cell as active
+		INTEGER.DUP STATE_CELL_ACTIVE GRAPH.NODE*SETSTATE 
+
+		# Check if segement was part of matching segments
+		INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP 
+		(
+			# Was segement in matching segements in previous iteration?
+			STATE_SEGMENT_MATCHING STATE_SEGMENT_ACTIVE_MATCHING 2 INTVECTOR.FROMINT 
+
+			1 GRAPH.NODES*HISTORY INTEGER.DUP INTVECTOR.CONTAINS 
+
+			BOOLEAN.DUP EXEC.IF
+			(
+				# Update best matching id 
+				INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LENGTH BEST_SCORE INTEGER.> EXEC.IF 
+				(
+					# New best matching id 
+					NAME.QUOTE BEST_MATCHING_ID INTEGER.DEFINE
+
+					# New best score
+					INTVECTOR.LENGTH NAME.QUOTE BEST_SCORE INTEGER.DEFINE	
+					
+					# Clean up
+					INTVECTOR.POP
+
+				) INTEGER.POP INTVECTOR.POP # Clean Up
+
+			) INTEGER.POP # Clean Up
+
+			# Update Matching flag.
+			BOOLEAN.OR
+		)
+	)
+	# Select best matching segment if available
+	EXEC.IF
+	(
+		# Found candidate for winner cell 
+		# Winner cell is successor of best_matching_id 
+		NAME.QUOTE WINNER_CELL BEST_MATCHING_ID INTVECTOR.EMPTY GRAPH.NODE*SUCCESSORS 0 INTVECTOR.GET INTVECTOR.POP INTEGER.DEFINE
+
+		# Learning segment is best matching segment 
+		BEST_MATCHING_ID NAME.QUOTE LEARNING_SEGMENT INTEGER.DEFINE
+	)
+	(
+		# No candidate found	
+		# Choose random cell among the least used
+		FIND_LEAST_USED_CELLS INTEGER.RAND INTEGER.ABS INTVECTOR.LENGTH INTEGER.% INTVECTOR.GET 
+
+		# Set as new winner cell
+		NAME.QUOTE WINNER_CELL INTEGER.DEFINE
+
+		LEARNING_ENABLED EXEC.IF
+		(
+			# Create new segment  
+			STATE_SEGMENT GRAPH.NODE*ADD INTEGER.DUP 
+			# Define as learning segement
+			NAME.QUOTE LEARNING_SEGMENT INTEGER.DEFINE
+			# Add edge new_segment->winner_cell
+			WINNER_CELL INTEGER.SWAP INITIAL_PERMANENCE GRAPH.EDGE*ADD
+			
+		) NOOP
+		
+	)
+	# Mark cell as winner 
+	WINNER_CELL STATE_CELL_WINNER GRAPH.NODE*SETSTATE
+
+	LEARNING_ENABLED EXEC.IF
+	(
+		# Enforce synapses with correct predictions 
+		LEARNING_SEGMENT ADJUST_PERMANENCES
+		# Determine missing synapses for this segment
+		LEARNING_SEGMENT SYNAPSE_SAMPLE_SIZE LEARNING_SEGMENT INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LENGTH INTVECTOR.POP INTEGER.- 
+		# Synaptic growth candidates (winner cells last round) 
+		STATE_CELL_WINNER STATE_CELL_ACTIVE_WINNER 2 INTVECTOR.FROMINT 1 GRAPH.NODES*HISTORY
+
+		GROW_SYNAPSES 
+
+	) NOOP
+
+)
+
+
+#
+# PUNISH PREDICTED COLUMN
+# -----------------------------------------------------------------------
+# PARAMS:
+# 1. cell_ids (INTVECTOR)
+#
+PUNISH_PREDICTED_COLUMN EXEC.DEFINE
+(
+
+	LEARNING_ENABLED EXEC.IF
+	(
+		# Iterate cells for this column
+		INTVECTOR.LOOP
+		(
+			# Iterate segments of cell
+			INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+			(
+				# When a column with matching segments doesn’t
+				# become active, punish the synapses that 
+				# caused these segments to be matching
+				STATE_SEGMENT_MATCHING STATE_SEGMENT_ACTIVE_MATCHING 2 INTVECTOR.FROMINT 
+				INTEGER.DUP GRAPH.NODE*GETSTATE INTVECTOR.CONTAINS
+				EXEC.IF
+				(
+					# Iterate pre-synaptic cells of segment
+					INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+					(
+						# Check if pre-synaptic cell is active 
+						INTEGER.DUP GRAPH.NODE*GETSTATE STATE_CELL_ACTIVE INTEGER.= EXEC.IF
+						(
+							# Increase synapse permanence
+							# segment ID to top
+							INTEGER.SWAP
+							# Get edge weight pre_syn_cell ID -> segment ID
+							INTEGER.DDUP GRAPH.EDGE*GETWEIGHT
+							# Adjust edge weight
+							PREDICTED_DECREMENT FLOAT.-
+							# Set edge weight
+							INTEGER.DDUP GRAPH.EDGE*SETWEIGHT
+
+							INTEGER.SWAP INTEGER.POP
+
+						) INTEGER.POP 
+					)
+					INTEGER.POP
+				) NOOP
+
+				# Clean up
+				INTEGER.POP
+			)
+		)
+		
+	)
+)
+
+BP0 NAME.POP
+
+
+
+# -------------------------------------------------------------------------
+# Graph Initialization – Add a new graph for the temporal memory         #
+# -------------------------------------------------------------------------
+GRAPH.ADD
+
+
+# Add columns
+NUM_COLUMNS INDEX.DEFINE EXEC.LOOP
+(
+	# Add column node
+	STATE_COLUMN_INACTIVE GRAPH.NODE*ADD
+
+	# Update column ids
+	INTEGER.DUP COLUMN_IDS INTVECTOR.SET*INSERT NAME.QUOTE COLUMN_IDS INTVECTOR.DEFINE
+
+	# Add cells per column
+	NUM_CELLS INDEX.DEFINE EXEC.LOOP
+	(
+		# Add node cell
+		STATE_CELL_INACTIVE GRAPH.NODE*ADD
+
+		# Create edge from cell node to column node
+		INTEGER.SWAP 0.0 GRAPH.EDGE*ADD
+	)
+	# Remove column ID
+	INTEGER.POP
+	
+)
+
+# Copy to create graph history
+GRAPH.DUP
+
+BP1 NAME.POP
+
+
+# Read input repeatedly
+EXEC.Y
+(
+	# TODO Flush all stacks except graph
+	# Pushes true if there is input / false otherwise
+	INPUT.AVAILABLE
+	
+	# Move next input reading to the bottom of the stack
+	EXEC.STACKDEPTH EXEC.SHOVE
+)
+
+# -------------------------------------------------------------------------
+# Phase 1 – Read active columns (feed-forward input).
+# -------------------------------------------------------------------------
+
+# Repeat P1
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF
+	(
+
+		# Push column ids
+		COLUMN_IDS
+		
+		# Copy input
+		INPUT.READ INTVECTOR.POP
+
+		# Loop through input
+		NUM_COLUMNS INDEX.DEFINE EXEC.LOOP
+		(
+			# Transfer active flag from input to column of graph
+			INDEX.CURRENT BOOLVECTOR.GET EXEC.IF
+			(
+				INDEX.CURRENT INTVECTOR.GET STATE_COLUMN_ACTIVE GRAPH.NODE*SETSTATE
+			)
+			(
+				INDEX.CURRENT INTVECTOR.GET STATE_COLUMN_INACTIVE GRAPH.NODE*SETSTATE
+			)
+		)
+		INTVECTOR.POP
+		
+		# Remove input
+		INPUT.NEXT	
+	)
+)
+
+BP2 NAME.POP
+# TODO Flush all stacks except graph
+
+
+# Repeat P1
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+
+		# Push column ids
+		COLUMN_IDS
+
+		# Loop through columns 
+		INTVECTOR.LOOP
+		(
+			
+			# Check if column is active 
+			INTEGER.DUP GRAPH.NODE*GETSTATE STATE_COLUMN_ACTIVE INTEGER.=
+			
+			# Get cell ids for this column
+			INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS
+			
+			EXEC.IF 
+			(
+				# ACTIVATE flag
+			 	FALSE
+
+				# Copy cell ids
+				INTVECTOR.DUP
+
+				# Iterate segments of this column
+				INTVECTOR.LOOP
+				(
+					# Check if segment was active in last iteration
+					STATE_SEGMENT_ACTIVE STATE_SEGMENT_ACTIVE_MATCHING 2 INTVECTOR.FROMINT INTEGER.DUP 1 GRAPH.NODE*HISTORY INTVECTOR.CONTAINS
+
+					# Update ACTIVATE flag (-> TRUE if at least one active segement)
+					BOOLEAN.OR
+				)
+
+				
+				EXEC.IF
+				(
+					# At least one active distal segment: Column is predicted
+					ACTIVATE_PREDICTED_COLUMN
+				) 
+				(
+					# None of columns cells have an active segment -> burst
+					BURST_COLUMN
+				)
+
+			)
+			# Column not active
+			(
+				# PUNISH flag
+			 	FALSE
+
+				# Copy cell ids
+				INTVECTOR.DUP
+
+				# Iterate segements of this column
+				INTVECTOR.LOOP
+				(
+					# Check if current segment was matching matching in last iteration 
+					STATE_SEGMENT_MATCHING STATE_SEGMENT_ACTIVE_MATCHING 2 INTVECTOR.FROMINT INTEGER.DUP 1 GRAPH.HISTORY*NODE INTVECTOR.CONTAINS
+
+					# Update PUNISH flag (-> TRUE if at least one matching segment)
+					BOOLEAN.OR
+				)
+
+				EXEC.IF
+				(
+					# At least one matching segment: punish column 
+					PUNISH_PREDICTED_COLUMN	
+				) 
+				
+			)
+
+			# Remove cell id for this column
+			INTVECTOR.POP
+			
+		)
+
+		# Remove column ids
+		INTVECTOR.POP
+		
+		# Remove input
+		INPUT.NEXT	
+
+	)
+)
+
+BP3 NAME.POP
+# TODO Flush all stacks except graph
+
+# -------------------------------------------------------------------------
+# Phase 2 – Evaluate the active columns against predictions.
+# Choose a set of active cells
+# -------------------------------------------------------------------------
+
+# Repeat P2
+EXEC.Y
+(
+	# Skip phase if there is no new input
+	BOOLEAN.DUP EXEC.IF 
+	(
+		
+		# Push column ids
+		COLUMN_IDS
+
+		# Loop through columns 
+		INTVECTOR.LOOP
+		(
+			# Iterate cells of column
+			INTVECTOR.LOOP
+			(
+				# Iterate segments of cell
+				INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP
+				(
+					NAME.QUOTE NUM_ACTIVE_CONNECTED 0 INTEGER.DEFINE
+					NAME.QUOTE NUM_ACTIVE_POTENTIAL 0 INTEGER.DEFINE
+					
+					# Iterate presynaptic cells
+					INTEGER.DUP INTVECTOR.EMPTY GRAPH.NODE*PREDECESSORS INTVECTOR.LOOP 
+					(
+						# Check if pre-synaptic cell is active 
+						INTEGER.DUP GRAPH.NODE*GETSTATE STATE_CELL_ACTIVE INTEGER.= EXEC.IF
+						(
+							# Should be 1: cell_id 2: segment_id 3: segment_id
+							1 INTEGER.YANKDUP INTEGER.SWAP	
+							# Get edge weight pre_syn_cell ID -> segment ID
+							GRAPH.EDGE*GETWEIGHT
+
+							# Increase number of active connected
+							FLOAT.DUP CONNECTED_PERMANENCE FLOAT.> EXEC.IF
+							(
+								NUM_ACTIVE_CONNECTED 1 INTEGER.+ NAME.QUOTE NUM_ACTIVE_CONNECTED INTEGER.DEFINE
+							)
+							# Increase number of active potential
+							0 FLOAT.> EXEC.IF 
+							(
+								NUM_ACTIVE_POTENTIAL 1 INTEGER.+ NAME.QUOTE NUM_ACTIVE_POTENTIAL INTEGER.DEFINE
+							)
+
+						) INTEGER.POP 
+
+					)
+				
+					NUM_ACTIVE_CONNECTED ACTIVATION_THRESHOLD INTEGER.> NUM_ACTIVE_POTENTIAL LEARNING_THRESHOLD INTEGER.> BOOLEAN.AND EXEC.IF 
+					(
+					 STATE_SEGMENT_ACTIVE_MATCHING GRAPH.NODE*SETSTATE	
+					) NOOP
+
+					NUM_ACTIVE_CONNECTED ACTIVATION_THRESHOLD INTEGER.> NUM_ACTIVE_POTENTIAL LEARNING_THRESHOLD 1 INTEGER.+ INTEGER.< BOOLEAN.AND EXEC.IF 
+					(
+						STATE_SEGMENT_ACTIVE GRAPH.NODE*SETSTATE	
+					) NOOP
+
+					NUM_ACTIVE_CONNECTED ACTIVATION_THRESHOLD 1 INTEGER.+ INTEGER.< NUM_ACTIVE_POTENTIAL LEARNING_THRESHOLD INTEGER.> BOOLEAN.AND EXEC.IF 
+					(
+						STATE_SEGMENT_MATCHING GRAPH.NODE*SETSTATE	
+					) NOOP
+					
+					NUM_ACTIVE_CONNECTED ACTIVATION_THRESHOLD 1 INTEGER.+ INTEGER.< NUM_ACTIVE_POTENTIAL LEARNING_THRESHOLD 1 INTEGER.+ INTEGER.< BOOLEAN.AND EXEC.IF 
+					(
+						STATE_SEGMENT GRAPH.NODE*SETSTATE	
+					) NOOP
+
+				)
+			)
+		)
+	)
+
+	# Duplicate graph
+	GRAPH.DUP
+
+	# Remove input
+	INPUT.NEXT	
+
+)
+
+
+
+# ----------------  Temporal Memory End ---------------------
+)
