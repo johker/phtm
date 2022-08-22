@@ -1,2 +1,2 @@
-# dhtm_proxy
+# proxy
 ZeroMQ Proxy for Publisher Subscriber Pattern
