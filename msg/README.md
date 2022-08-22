@@ -1,4 +1,8 @@
-## Message format specification
+## msg
+
+Generates constants for the message offsets for used languages. Run ``` pyhton xx/gen_xx.py ``` to update message constants for language xx. 
+
+### Message format specification
 
 Each message is encoded in binary format. Its components are:
 
