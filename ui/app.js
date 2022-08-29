@@ -5,6 +5,7 @@ const io = require('socket.io')(http);
 const port = process.env.PORT || 3000;
 const zmq = require('zeromq');
 const util = require('util');
+const fs = require('fs');
 const {StringDecoder} = require('string_decoder');
 
 const MSG = require('../msg/js/msg.js');
@@ -19,6 +20,15 @@ function resolve(path, obj=self, separator='.') {
 	    var properties = Array.isArray(path) ? path : path.split(separator)
 	    return properties.reduce((prev, curr) => prev && prev[curr], obj)
 }
+
+function syncReadFile(filename) {
+	const contents = fs.readFileSync(filename, 'UTF8');
+	const arr = contents.split(/\r?\n/);
+	console.log(arr);
+	return arr;
+}
+
+syncReadFile('../data/rec-center-hourly.csv');
 
 var publisher = zmq.socket("pub");
 publisher.connect("tcp://127.0.0.1:6000");
