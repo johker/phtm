@@ -16,8 +16,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install ZeroMq
+      run: sudo apt install build-essential libsocketcan-dev libzmq3-dev
     - name: Build
       run: cargo build --verbose
       working-directory: ./core
     - name: Run tests
       run: cargo test --verbose
+      working-directory: ./core
