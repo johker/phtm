@@ -13,13 +13,13 @@ mod test_utils;
 fn spatial_pooler_graph_initialization() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+
     executor.load(param_sources);
     executor.load(sp_sources);
     executor.step_until("BP0".to_string());
@@ -125,13 +125,13 @@ fn spatial_pooler_graph_initialization() {
 fn spatial_pooler_graph_topology() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+
     executor.load(param_sources);
     executor.load(sp_sources);
     executor.step_until("BP0".to_string());
@@ -218,13 +218,13 @@ fn spatial_pooler_graph_topology() {
 fn spatial_pooler_calculate_overlap_to_input() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+
     executor.load(param_sources);
     executor.load(sp_sources);
     executor.step_until("BP4".to_string());
@@ -321,15 +321,16 @@ fn spatial_pooler_calculate_overlap_to_input() {
 
 fn inject_test_graph(executor: &mut PushExecutor, core_id: &mut i32, radius: i32, nodes_within_radius: &mut Vec<usize> ) {
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+
     executor.load(param_sources);
     executor.load(sp_sources);
+   
     executor.step_until("BP4".to_string());
 
     let state_column_active = test_utils::read_int_parameter(&executor, "STATE_COLUMN_ACTIVE".to_string()).unwrap();
@@ -473,15 +474,16 @@ fn spatial_pooler_calculate_column_neighborhood() {
 fn spatial_pooler_calculate_min_local_activity() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+                                                        
     executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP3".to_string());
 
     let state_column_active = test_utils::read_int_parameter(&executor, "STATE_COLUMN_ACTIVE".to_string()).unwrap() as usize;
@@ -625,15 +627,16 @@ fn dfs(graph: &Graph, visited_nodes: &mut Vec<usize>, states: &Vec<usize>, node_
 fn spatial_pooler_permanence_adjustment() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+                                                         
     executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP3".to_string());
 
     let state_column_active = test_utils::read_int_parameter(&executor, "STATE_COLUMN_ACTIVE".to_string()).unwrap() as usize;
@@ -834,15 +837,16 @@ pub fn inject_duty_cycle_test_graphs(executor: &mut PushExecutor, center_col_id:
 fn spatial_pooler_duty_cycle() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
+
+    let param_sources = Source::read_debug_code(p_code);
+    let sp_sources = Source::read_debug_code(sp_code);
+                                                         
     executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP3".to_string());
 
     let state_column_active = test_utils::read_int_parameter(&executor, "STATE_COLUMN_ACTIVE".to_string()).unwrap() as usize;

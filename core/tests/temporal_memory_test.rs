@@ -17,14 +17,14 @@ mod test_utils;
 /// cells typically have a different state.
 pub fn inject_activate_predicted_column_graph(executor: &mut PushExecutor) {
     executor.initialize();
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     // Execute program until end of temporal memory graph creation (BP 1)
     //println!("Exec Stack = {}", executor.push_state.to_string());
     executor.step_until("BP1".to_string());
@@ -103,14 +103,14 @@ pub fn inject_activate_predicted_column_graph(executor: &mut PushExecutor) {
 /// cells typically have a different state. Additionally, a fixed number of winner cells is added. 
 pub fn inject_grow_synapses_graph(executor: &mut PushExecutor, found_segment: &mut bool, segment_id: &mut i32, winner_ids: &mut Vec<i32>) {
     executor.initialize();
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     // Execute program until end of temporal memory graph creation (BP 1)
     executor.step_until("BP1".to_string());
 
@@ -203,14 +203,14 @@ pub fn inject_grow_synapses_graph(executor: &mut PushExecutor, found_segment: &m
 /// active connected synapses
 pub fn inject_test_segment(executor: &mut PushExecutor, test_segment: &mut usize, num_active_pot_sn: &mut usize, num_active_con_sn: &mut usize) {
     executor.initialize();
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     executor.step_until("BP0".to_string());
     executor.push_state.exec_stack.flush();
 
@@ -255,14 +255,14 @@ pub fn inject_test_segment(executor: &mut PushExecutor, test_segment: &mut usize
 /// of connected synapses and its segment id are returned.
 pub fn inject_test_column(executor: &mut PushExecutor,best_matching_score: &mut i32, learning_segment_candidates: &mut Vec<i32>, winner_candidates: &mut Vec<i32>, least_used_cells: &mut Vec<i32>, winner_tmo: &mut Vec<i32>, has_matching_segments: bool){
     executor.initialize();
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     executor.step_until("BP0".to_string());
 
     let state_column_inactive = test_utils::read_int_parameter(&executor, "STATE_COLUMN_INACTIVE".to_string()).unwrap();
@@ -353,15 +353,14 @@ pub fn inject_test_column(executor: &mut PushExecutor,best_matching_score: &mut 
 fn temporal_memory_graph_initialization() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     // Execute program until end of temporal memory graph creation (BP 1)
     executor.step_until("BP1".to_string());
     let mut instruction_set = InstructionSet::new();
@@ -386,15 +385,14 @@ fn temporal_memory_graph_initialization() {
 fn temporal_memory_graph_activity_transfer() {
     let mut executor = PushExecutor::new();
     executor.initialize();
-    // TODO: relative path
-    let param_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/parameters.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
+
+    let p_code = include_str!("../src/core/parameters.push").to_string();
+    let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
+    let param_sources = Source::read_debug_code(p_code);
+    let tm_sources = Source::read_debug_code(tm_code);
     executor.load(param_sources);
-    executor.load(sp_sources);
+    executor.load(tm_sources);
+
     // Execute program until end of temporal memory graph creation (BP 1)
     executor.step_until("BP1".to_string());
 

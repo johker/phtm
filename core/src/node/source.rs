@@ -11,9 +11,10 @@ pub struct Source {
 }
 
 impl Source {
+
     /// Saves the lines of the file specified by the filename P
     /// Omits lines that start with # (comments) and BP (breakpoints)
-    pub fn read_code<P>(filename: P) -> String
+    pub fn read_code_file<P>(filename: P) -> String
     where
         P: AsRef<Path>,
     {
@@ -24,16 +25,16 @@ impl Source {
             .map(|line| line.unwrap())
             .filter(|line| !line.starts_with("#"))
             .filter(|line| !line.starts_with("BP"));
-        // TODO: Recursively include other files
         for p in it {
             buffer += &Source::remove_suffix(&p, "#").replace("\t", "");
             buffer += " ";
         }
         buffer
     }
+
     /// Saves the lines of the file specified by the filename P
     /// Omits lines that start with # (comments)
-    pub fn read_debug_code<P>(filename: P) -> String
+    pub fn read_debug_code_file<P>(filename: P) -> String
     where
         P: AsRef<Path>,
     {
@@ -50,8 +51,38 @@ impl Source {
         buffer
     }
 
+    /// Removes lines that start with # (comments) and BP (breakpoints).
+    pub fn read_code(s: String) -> String 
+    {
+        let mut buffer: String = String::new();
+        let it = s
+            .lines()
+            .filter(|line| !line.starts_with("#"))
+            .filter(|line| !line.starts_with("BP"));
+        for p in it {
+            buffer += &Source::remove_suffix(&p, "#").replace("\t", "");
+            buffer += " ";
+        }
+        buffer
+    }
+
+    /// Removes lines that start with # (comments)
+    pub fn read_debug_code(s: String) -> String 
+    {
+        let mut buffer: String = String::new();
+        let it = s
+            .lines()
+            .filter(|line| !line.starts_with("#"));
+        for p in it {
+            buffer += &Source::remove_suffix(&p, "#").replace("\t", "");
+            buffer += " ";
+        }
+        buffer
+
+    }
+
     /// Strip everything after suffix from string
-    fn remove_suffix<'a>(s: &'a str, suffix: &str) -> &'a str {
+    pub fn remove_suffix<'a>(s: &'a str, suffix: &str) -> &'a str {
         match s.split(suffix).nth(0) {
             Some(s) => s,
             None => s,
@@ -66,11 +97,8 @@ mod tests {
 
     #[test]
     pub fn read_code_removes_comments() {
-        // TODO: Remove absolute path
-        let sp_sources = Source::read_debug_code(String::from(
-            "/home/workspace/dhtm_node/src/core/spatial_pooler.push",
-        ));
-        println!("{}", sp_sources);
+        let sp_code = include_str!("../core/spatial_pooler.push").to_string();
+        let sp_sources = Source::read_debug_code(sp_code);
         assert!(!sp_sources.contains("#"));
     }
 }
