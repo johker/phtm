@@ -1,4 +1,4 @@
-## HTM in Push (PHTM)
+## Push Hierarchical Temporal Memory (PHTM)
 
 ![Tests](https://github.com/johker/phtm/actions/workflows/rust.yml/badge.svg)
 
