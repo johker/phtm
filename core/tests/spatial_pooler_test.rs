@@ -14,14 +14,10 @@ fn spatial_pooler_graph_initialization() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-
-    executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP0".to_string());
 
     let num_columns = test_utils::read_int_parameter(&executor, "NUM_COLUMNS".to_string()).unwrap() as usize;
@@ -126,14 +122,10 @@ fn spatial_pooler_graph_topology() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-
-    executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP0".to_string());
 
     let num_columns = test_utils::read_int_parameter(&executor, "NUM_COLUMNS".to_string()).unwrap() as usize;
@@ -219,14 +211,10 @@ fn spatial_pooler_calculate_overlap_to_input() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-
-    executor.load(param_sources);
     executor.load(sp_sources);
+
     executor.step_until("BP4".to_string());
 
     let num_columns = test_utils::read_int_parameter(&executor, "NUM_COLUMNS".to_string()).unwrap() as usize;
@@ -322,13 +310,8 @@ fn spatial_pooler_calculate_overlap_to_input() {
 fn inject_test_graph(executor: &mut PushExecutor, core_id: &mut i32, radius: i32, nodes_within_radius: &mut Vec<usize> ) {
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-
-    executor.load(param_sources);
     executor.load(sp_sources);
    
     executor.step_until("BP4".to_string());
@@ -475,13 +458,8 @@ fn spatial_pooler_calculate_min_local_activity() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-                                                        
-    executor.load(param_sources);
     executor.load(sp_sources);
 
     executor.step_until("BP3".to_string());
@@ -628,13 +606,8 @@ fn spatial_pooler_permanence_adjustment() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-                                                         
-    executor.load(param_sources);
     executor.load(sp_sources);
 
     executor.step_until("BP3".to_string());
@@ -838,13 +811,8 @@ fn spatial_pooler_duty_cycle() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let sp_code = include_str!("../src/core/spatial_pooler.push").to_string();
-
-    let param_sources = Source::read_debug_code(p_code);
     let sp_sources = Source::read_debug_code(sp_code);
-                                                         
-    executor.load(param_sources);
     executor.load(sp_sources);
 
     executor.step_until("BP3".to_string());

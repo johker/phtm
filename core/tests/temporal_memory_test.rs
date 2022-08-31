@@ -18,11 +18,8 @@ mod test_utils;
 pub fn inject_activate_predicted_column_graph(executor: &mut PushExecutor) {
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     // Execute program until end of temporal memory graph creation (BP 1)
@@ -104,11 +101,8 @@ pub fn inject_activate_predicted_column_graph(executor: &mut PushExecutor) {
 pub fn inject_grow_synapses_graph(executor: &mut PushExecutor, found_segment: &mut bool, segment_id: &mut i32, winner_ids: &mut Vec<i32>) {
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     // Execute program until end of temporal memory graph creation (BP 1)
@@ -204,11 +198,8 @@ pub fn inject_grow_synapses_graph(executor: &mut PushExecutor, found_segment: &m
 pub fn inject_test_segment(executor: &mut PushExecutor, test_segment: &mut usize, num_active_pot_sn: &mut usize, num_active_con_sn: &mut usize) {
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     executor.step_until("BP0".to_string());
@@ -256,11 +247,8 @@ pub fn inject_test_segment(executor: &mut PushExecutor, test_segment: &mut usize
 pub fn inject_test_column(executor: &mut PushExecutor,best_matching_score: &mut i32, learning_segment_candidates: &mut Vec<i32>, winner_candidates: &mut Vec<i32>, least_used_cells: &mut Vec<i32>, winner_tmo: &mut Vec<i32>, has_matching_segments: bool){
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     executor.step_until("BP0".to_string());
@@ -354,11 +342,8 @@ fn temporal_memory_graph_initialization() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     // Execute program until end of temporal memory graph creation (BP 1)
@@ -386,11 +371,8 @@ fn temporal_memory_graph_activity_transfer() {
     let mut executor = PushExecutor::new();
     executor.initialize();
 
-    let p_code = include_str!("../src/core/parameters.push").to_string();
     let tm_code = include_str!("../src/core/temporal_memory.push").to_string();
-    let param_sources = Source::read_debug_code(p_code);
     let tm_sources = Source::read_debug_code(tm_code);
-    executor.load(param_sources);
     executor.load(tm_sources);
 
     // Execute program until end of temporal memory graph creation (BP 1)

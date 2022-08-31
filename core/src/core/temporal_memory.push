@@ -3,6 +3,43 @@
 # -------------------------------------------------------------------------
 (
 
+# -------------------------------------------------------------------------
+#                           Graph Parameters                              #
+# -------------------------------------------------------------------------
+
+1       STATE_INPUT_ON                  INTEGER.DEFINE
+2       STATE_INPUT_OFF                 INTEGER.DEFINE
+3       STATE_BOOST_CELL                INTEGER.DEFINE
+4       STATE_COLUMN_ACTIVE             INTEGER.DEFINE
+5       STATE_COLUMN_INACTIVE           INTEGER.DEFINE
+6       STATE_CELL_INACTIVE             INTEGER.DEFINE
+7       STATE_CELL_PREDICTIVE           INTEGER.DEFINE
+8       STATE_CELL_ACTIVE               INTEGER.DEFINE
+9       STATE_CELL_WINNER               INTEGER.DEFINE
+10      STATE_CELL_ACTIVE_WINNER        INTEGER.DEFINE
+11      STATE_SEGMENT                   INTEGER.DEFINE
+12      STATE_SEGMENT_MATCHING          INTEGER.DEFINE
+13      STATE_SEGMENT_ACTIVE            INTEGER.DEFINE
+14      STATE_SEGMENT_ACTIVE_MATCHING   INTEGER.DEFINE
+
+# -------------------------------------------------------------------------
+#                       Temporal Memory Parameters                        #
+# -------------------------------------------------------------------------
+
+TRUE    LEARNING_ENABLED                BOOLEAN.DEFINE
+
+16      NUM_COLUMNS                     INTEGER.DEFINE
+4       TOPOLOGY_EDGE_LENGTH            INTEGER.DEFINE
+1       NUM_CELLS                       INTEGER.DEFINE
+4       SYNAPSE_SAMPLE_SIZE             INTEGER.DEFINE
+3       ACTIVATION_THRESHOLD            INTEGER.DEFINE
+1       LEARNING_THRESHOLD              INTEGER.DEFINE
+
+0.015   PERM_INCREMENT                  FLOAT.DEFINE
+0.005   PERM_DECREMENT                  FLOAT.DEFINE
+0.025   PREDICTED_DECREMENT             FLOAT.DEFINE 
+1.01    INITIAL_PERMANENCE              FLOAT.DEFINE
+1.1     CONNECTED_PERMANENCE            FLOAT.DEFINE
 
 # -------------------------------------------------------------------------
 #                              Subroutines                                #
