@@ -14,3 +14,11 @@ More information can be found [here](http://faculty.hampshire.edu/lspector/push.
 - msg contains the encoding of data in the message payload
 - ui contains the d3 visualization
 
+### How to run
+
+Start the spatial pooler with
+```  cargo run "$(< src/core/spatial_pooler.push)" ```
+
+Start the temporal memory with
+```  cargo run "$(< src/core/temporal_memory.push)" ```
+

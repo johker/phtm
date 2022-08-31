@@ -40,6 +40,10 @@ use crate::test::inject_activate_predicted_column_graph;
 
 fn main() {
 
+    println!("");
+    println!("PHTM");
+    println!("");
+
     print!("Initializing Push Executor ... ");
     let args: Vec<String> = env::args().collect(); 
     if args.len() < 2 {
@@ -103,7 +107,7 @@ fn main() {
 
     // Execute program until end of temporal memory graph creation (BP 1)
     // TODO Solve without breakpoints
-    print!("Creating memory graph");
+    print!("Creating memory graph ... ");
     executor.step_until("Identifier(BP1)".to_string());
     let mut instruction_set = InstructionSet::new();
     let instruction_cache = instruction_set.cache();
@@ -157,5 +161,5 @@ fn main() {
                 } 
             } // End of vector size check
         } // End of loop 
-        println!("Main program terminated");
+        println!("Done.")
     }
