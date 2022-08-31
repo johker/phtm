@@ -10,6 +10,7 @@ use crate::num_traits::{FromPrimitive, ToPrimitive};
 
 use std::sync::mpsc;
 use std::thread;
+use std::env;
 
 // Include auto-generated file
 mod node;
@@ -38,20 +39,38 @@ use crate::test::inject_activate_predicted_column_graph;
 
 
 fn main() {
-    print!("Initializing Message Broker...");
 
+    print!("Initializing Push Executor ... ");
+    let args: Vec<String> = env::args().collect(); 
+    if args.len() < 2 {
+        println!("failed");
+        println!("No input provided");
+        return;
+    }
+    let input = args[1].clone();
+
+    let mut executor = PushExecutor::new();
+    executor.initialize();
+    println!("ok");
+
+    print!("Loading program ... ");
+    // Load program from input
+    executor.load(input);
+    // Inject interpreter binary 
+    executor.push_state.name_bindings.insert("BIN".to_string(), Item::id(args[0].clone())); 
+    println!("ok");
+
+    print!("Initializing Message Broker ... ");
     let (tx, rx) = mpsc::channel();
     let context = zmq::Context::new();
     let mut state = State::Waiting { waiting_time: 0 };
     let mut m = Message {
         data: vec![0; DEF_PL_SIZE + PAYLOAD_OFFSET],
     };
-
     // Initialize publisher
     let publisher = context.socket(zmq::PUB).unwrap();
     assert!(publisher.connect("tcp://localhost:6000").is_ok());
     let subscriber = context.socket(zmq::SUB).unwrap();
-
     // Initialize subsciber
     thread::spawn(move || {
         assert!(subscriber.connect("tcp://localhost:5555").is_ok());
@@ -65,7 +84,6 @@ fn main() {
                 .as_bytes(),
             )
             .expect("Failed to subscribe");
-
         subscriber
             .set_subscribe(
                 &format!(
@@ -76,34 +94,20 @@ fn main() {
                 .as_bytes(),
             )
             .expect("Failed to subscribe");
-
         loop {
             let s = subscriber.recv_bytes(0).unwrap();
             tx.send(s).unwrap();
         }
     });
+    println!("ok");
 
-    println!("Done");
-
-    // Initialize Virtual Machine
-    print!("Initializing Push Executor...");
-    let mut executor = PushExecutor::new();
-
-    executor.initialize();
-    let tm_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/temporal_memory.push",
-    ));
-    let sp_sources = Source::read_debug_code(String::from(
-        "/home/workspace/phtm/core/src/core/spatial_pooler.push",
-    ));
-    // TODO: Load sp or tm based on passed argument
-    executor.load(sp_sources);
     // Execute program until end of temporal memory graph creation (BP 1)
+    // TODO Solve without breakpoints
+    print!("Creating memory graph");
     executor.step_until("Identifier(BP1)".to_string());
     let mut instruction_set = InstructionSet::new();
     let instruction_cache = instruction_set.cache();
-
-    println!("Done");
+    println!("ok");
 
     loop {
         // TODO: Do x steps before checking message buffer

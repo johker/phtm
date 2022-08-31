@@ -48,6 +48,7 @@ impl PushExecutor {
     /// Load program code to execution stack
     pub fn load(&mut self, program: String) {
         PushParser::parse_program(&mut self.push_state, &self.instruction_set, &program);
+        PushParser::copy_to_code_stack(&mut self.push_state);
     }
 
     /// Run execution stack while receiving messages
