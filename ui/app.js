@@ -15,6 +15,7 @@ const zeroPad = (num, places) => String(num).padStart(places, '0');
 
 const msgSize = MSG.PAYLOAD_OFFSET + MSG.DEF_PL_SIZE;
 var msg = new Message(msgSize);
+var data_idx = 0;
 
 function resolve(path, obj=self, separator='.') {
 	    var properties = Array.isArray(path) ? path : path.split(separator)
@@ -24,11 +25,29 @@ function resolve(path, obj=self, separator='.') {
 function syncReadFile(filename) {
 	const contents = fs.readFileSync(filename, 'UTF8');
 	const arr = contents.split(/\r?\n/);
-	console.log(arr);
 	return arr;
 }
 
-syncReadFile('../data/rec-center-hourly.csv');
+data = syncReadFile('../data/rec-center-hourly.csv');
+
+function send_data() {
+	topic = MSG.MessageCommand.INPUT;
+	msg.create_header(MSG.MessageType.DATA, MSG.MessageCommand.WRITE, MSG.MessageKey.D_INPUT);
+	console.log(data[(data_idx % data.length-1)]);
+	msg.set_payload_bit(3);
+	msg.set_payload_bit(5);
+	msg.set_payload_bit(7);
+	msg.set_payload_bit(80);
+	msg.clear_payload_bit(5);
+	const decoder = new StringDecoder('utf8');
+	const outb  = Buffer.from(msg.buffer);
+	console.log('SENT MSG (TOPIC: ' + msg.get_topic() + ')');
+	// console.log('SENT ZMQ: ' + msg.toString());
+	var pub_topic = Buffer.from(msg.get_topic()); 
+	publisher.send([pub_topic, outb]);
+	data_idx += 1;
+}
+
 
 var publisher = zmq.socket("pub");
 publisher.connect("tcp://127.0.0.1:6000");
@@ -50,6 +69,8 @@ subscriber.on('message', function(topic, message) {
 	io.emit('sdr', msg.buffer);
 });
 
+// Send data update every 5 secs
+setInterval(send_data, 5000);
 
 app.use('/public', express.static(__dirname + '/public'));
 

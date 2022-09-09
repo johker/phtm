@@ -114,8 +114,11 @@ fn main() {
     println!("ok");
 
     loop {
-        // TODO: Do x steps before checking message buffer
         if PushInterpreter::step(&mut executor.push_state, &mut instruction_set, &instruction_cache) {
+            if executor.push_state.exec_stack.size() > 0 {
+                println!("EXEC = {}", executor.push_state.exec_stack.copy(0).unwrap().to_string());
+            }
+            println!("Empty Execution Stack");
             break;
         }
         match rx.try_recv() {

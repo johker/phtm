@@ -5,7 +5,8 @@
   "main": "dist/app.js",
   "scripts": {
     "start": "tsc && node build/app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest --config ./jest.config.json",
+    "watch": "npm run test -- --watch"
   },
   "author": "johker",
   "license": "MIT",
@@ -13,5 +14,8 @@
     "express": "^4.17.1",
     "socket.io": "^3.1.0",
     "zeromq": "^5.2.0"
+  },
+  "devDependencies": {
+    "jest": "^29.0.2"
   }
 }
