@@ -13,7 +13,7 @@ More information can be found [here](http://faculty.hampshire.edu/lspector/push.
 - core contains the implementation of the spatial pooler and the temporal memory
 - proxy contains the message broker
 - msg contains the encoding of data in the message payload
-- ui contains the d3 visualization
+- ui contains the a visualization of the program graph (TBD)
 
 ### How to run
 
