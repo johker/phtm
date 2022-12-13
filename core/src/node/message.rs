@@ -3,7 +3,7 @@ use crate::shared::msg::{MessageCommand, MessageKey, MessageType};
 use crate::shared::msg::{
     CMD_OFFSET, DEF_PL_SIZE, ID_OFFSET, KEY_OFFSET, PAYLOAD_OFFSET, TYPE_OFFSET,
 };
-use crate::pushr::push::vector::{BoolVector, IntVector};
+use crate::pushr::push::vector::{IntVector};
 
 pub struct Message {
     pub data: Vec<u8>,
